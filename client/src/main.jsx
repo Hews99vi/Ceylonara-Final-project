@@ -13,6 +13,7 @@ import ContactPage from "./routes/contactpage/ContactPage";
 import ExplorePage from "./components/ExplorePage/ExplorePage";
 import ManageStatePage from "./components/ManageStatePage/ManageStatePage";
 import AnalyzeTeaPage from "./components/AnalyzeTeaPage/AnalyzeTeaPage";
+import HarvestPlanPage from "./components/HarvestPlanPage/HarvestPlanPage";
 
 const router = createBrowserRouter([
   {
@@ -52,6 +53,10 @@ const router = createBrowserRouter([
           {
             path: "/dashboard/analyze-tea",
             element: <AnalyzeTeaPage />,
+          },
+          {
+            path: "/dashboard/harvest-plan",
+            element: <HarvestPlanPage />,
           },
           {
             path: "/dashboard/chats/:id",

@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
-
   const navigate = useNavigate();
 
   const mutation = useMutation({
@@ -19,7 +18,6 @@ const DashboardPage = () => {
       }).then((res) => res.json());
     },
     onSuccess: (id) => {
-      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["userChats"] });
       navigate(`/dashboard/chats/${id}`);
     },
@@ -29,9 +27,22 @@ const DashboardPage = () => {
     e.preventDefault();
     const text = e.target.text.value;
     if (!text) return;
-
     mutation.mutate(text);
   };
+
+  const handleAnalyze = () => {
+    navigate('/dashboard/analyze-tea');
+  };
+
+  const handleManageState = () => {
+    navigate('/dashboard/manage-state');
+  };
+
+  // Add handler for Harvest Planning
+  const handleHarvestPlan = () => {
+    navigate('/dashboard/harvest-plan');
+  };
+
   return (
     <div className="dashboardPage">
       <div className="texts">
@@ -40,17 +51,18 @@ const DashboardPage = () => {
           <h1>Ceylonara</h1>
         </div>
         <div className="options">
-          <div className="option">
-            <img src="/chat.png" alt="" />
-            <span>Create a New Chat</span>
-          </div>
-          <div className="option">
+          <div className="option" onClick={handleAnalyze}>
             <img src="/image.png" alt="" />
             <span>Analyze Images</span>
           </div>
-          <div className="option">
+          <div className="option" onClick={handleManageState}>
             <img src="/code.png" alt="" />
-            <span>Help me with Tea</span>
+            <span>Manage My Tea State</span>
+          </div>
+          {/* Add Harvest Planning option */}
+          <div className="option" onClick={handleHarvestPlan}>
+            <img src="/calendar.png" alt="" />
+            <span>Harvest Planning</span>
           </div>
         </div>
       </div>

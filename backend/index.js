@@ -1,20 +1,40 @@
 import express from "express";
-import cors from "cors";
-import path from "path";
-import url, { fileURLToPath } from "url";
-import ImageKit from "imagekit";
 import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cors from "cors";
+import { clerkClient, ClerkExpressRequireAuth } from "@clerk/clerk-sdk-node";
 import Chat from "./models/chat.js";
+import Message from "./models/message.js";
+import ImageKit from "imagekit";
 import UserChats from "./models/userChats.js";
-import Contact from "./models/contact.js";
-import { ClerkExpressRequireAuth } from "@clerk/clerk-sdk-node";
 
-const port = process.env.PORT || 3000;
+// Import the new HarvestData model
+import HarvestData from "./models/harvestData.js";
+
+dotenv.config();
+
 const app = express();
+const PORT = 3000;
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Connect to MongoDB
+mongoose
+  .connect(process.env.MONGO)
+  .then(() => {
+    console.log("Connected to MongoDB");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
 
+// Initialize ImageKit
+const imagekit = new ImageKit({
+  publicKey: process.env.IMAGE_KIT_PUBLIC_KEY,
+  privateKey: process.env.IMAGE_KIT_PRIVATE_KEY,
+  urlEndpoint: process.env.IMAGE_KIT_ENDPOINT,
+});
+
+// Middleware
+app.use(express.json());
 app.use(
   cors({
     origin: process.env.CLIENT_URL,
@@ -22,188 +42,355 @@ app.use(
   })
 );
 
-app.use(express.json());
+// Clerk middleware
+const clerkMiddleware = ClerkExpressRequireAuth();
 
-const connect = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO);
-    console.log("Connected to MongoDB");
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-const imagekit = new ImageKit({
-  urlEndpoint: process.env.IMAGE_KIT_ENDPOINT,
-  publicKey: process.env.IMAGE_KIT_PUBLIC_KEY,
-  privateKey: process.env.IMAGE_KIT_PRIVATE_KEY,
+// Routes
+app.get("/", (req, res) => {
+  res.send("Hello World!");
 });
 
+// ImageKit authentication
 app.get("/api/upload", (req, res) => {
-  const result = imagekit.getAuthenticationParameters();
-  res.send(result);
+  const authenticationParameters = imagekit.getAuthenticationParameters();
+  res.send(authenticationParameters);
 });
 
-app.post("/api/contact", async (req, res) => {
-  const { name, email, message } = req.body;
-
+// Get all chats for a user
+app.get("/api/chats", clerkMiddleware, async (req, res) => {
   try {
-    const newContact = new Contact({
-      name,
-      email,
-      message,
-    });
-
-    await newContact.save();
-    res.status(201).send("Message sent successfully");
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Error saving contact message");
+    const userId = req.auth.userId;
+    const chats = await Chat.find({ userId }).sort({ updatedAt: -1 });
+    res.status(200).json(chats);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch chats" });
   }
 });
 
-app.post("/api/chats", ClerkExpressRequireAuth(), async (req, res) => {
-  const userId = req.auth.userId;
-  const { text } = req.body;
-
+// Get all chats for a user (for the sidebar)
+app.get("/api/userchats", clerkMiddleware, async (req, res) => {
   try {
-    // CREATE A NEW CHAT
+    const userId = req.auth.userId;
+    const userChats = await UserChats.findOne({ userId });
+    
+    if (!userChats) {
+      return res.status(200).json([]);
+    }
+    
+    res.status(200).json(userChats.chats);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch user chats" });
+  }
+});
+
+
+// Also, we need to update the chat creation endpoint to add the chat to userChats
+// Modify your existing chat creation endpoint
+app.post("/api/chats", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { text } = req.body;
+
     const newChat = new Chat({
-      userId: userId,
-      history: [{ role: "user", parts: [{ text }] }],
+      userId,
+      title: text.substring(0, 30),
     });
 
-    const savedChat = await newChat.save();
+    await newChat.save();
 
-    // CHECK IF THE USERCHATS EXISTS
-    const userChats = await UserChats.find({ userId: userId });
+    const newMessage = new Message({
+      chatId: newChat._id,
+      text,
+      role: "user",
+    });
 
-    // IF DOESN'T EXIST CREATE A NEW ONE AND ADD THE CHAT IN THE CHATS ARRAY
-    if (!userChats.length) {
-      const newUserChats = new UserChats({
-        userId: userId,
-        chats: [
-          {
-            _id: savedChat._id,
-            title: text.substring(0, 40),
-          },
-        ],
+    await newMessage.save();
+
+    // Add the chat to userChats
+    let userChats = await UserChats.findOne({ userId });
+    
+    if (!userChats) {
+      userChats = new UserChats({
+        userId,
+        chats: [],
       });
+    }
+    
+    userChats.chats.push({
+      _id: newChat._id.toString(),
+      title: text.substring(0, 30),
+      createdAt: new Date(),
+    });
+    
+    await userChats.save();
 
-      await newUserChats.save();
-    } else {
-      // IF EXISTS, PUSH THE CHAT TO THE EXISTING ARRAY
-      await UserChats.updateOne(
-        { userId: userId },
-        {
-          $push: {
-            chats: {
-              _id: savedChat._id,
-              title: text.substring(0, 40),
-            },
-          },
-        }
-      );
+    res.status(201).json(newChat._id);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to create chat" });
+  }
+});
+
+// Delete a chat
+app.delete("/api/chats/:id", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const chatId = req.params.id;
+
+    const chat = await Chat.findById(chatId);
+
+    if (!chat) {
+      return res.status(404).json({ error: "Chat not found" });
     }
 
-    res.status(201).send(savedChat._id);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Error creating chat!");
-  }
-});
+    if (chat.userId !== userId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
 
-app.get("/api/userchats", ClerkExpressRequireAuth(), async (req, res) => {
-  const userId = req.auth.userId;
-
-  try {
-    const userChats = await UserChats.find({ userId });
-
-    res.status(200).send(userChats[0].chats);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Error fetching userchats!");
-  }
-});
-
-app.get("/api/chats/:id", ClerkExpressRequireAuth(), async (req, res) => {
-  const userId = req.auth.userId;
-
-  try {
-    const chat = await Chat.findOne({ _id: req.params.id, userId });
-
-    res.status(200).send(chat);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Error fetching chat!");
-  }
-});
-
-app.put("/api/chats/:id", ClerkExpressRequireAuth(), async (req, res) => {
-  const userId = req.auth.userId;
-
-  const { question, answer, img } = req.body;
-
-  const newItems = [
-    ...(question
-      ? [{ role: "user", parts: [{ text: question }], ...(img && { img }) }]
-      : []),
-    { role: "model", parts: [{ text: answer }] },
-  ];
-
-  try {
-    const updatedChat = await Chat.updateOne(
-      { _id: req.params.id, userId },
-      {
-        $push: {
-          history: {
-            $each: newItems,
-          },
-        },
-      }
-    );
-    res.status(200).send(updatedChat);
-  } catch (err) {
-    console.log(err);
-    res.status(500).send("Error adding conversation!");
-  }
-});
-
-// New delete endpoint for chat deletion
-app.delete("/api/chats/:id", ClerkExpressRequireAuth(), async (req, res) => {
-  const userId = req.auth.userId;
-  const chatId = req.params.id;
-
-  try {
-    // Delete the chat document
-    await Chat.findOneAndDelete({ _id: chatId, userId });
-
-    // Remove the chat reference from UserChats
+    await Chat.findByIdAndDelete(chatId);
+    await Message.deleteMany({ chatId });
+    
+    // Remove from userChats
     await UserChats.updateOne(
       { userId },
       { $pull: { chats: { _id: chatId } } }
     );
 
     res.status(200).json({ message: "Chat deleted successfully" });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({ error: "Error deleting chat" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to delete chat" });
   }
 });
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(401).send("Unauthenticated!");
+// Get all messages for a chat
+app.get("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const chatId = req.params.id;
+
+    const chat = await Chat.findById(chatId);
+
+    if (!chat) {
+      return res.status(404).json({ error: "Chat not found" });
+    }
+
+    if (chat.userId !== userId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
+    res.status(200).json(messages);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch messages" });
+  }
 });
 
-// PRODUCTION
-app.use(express.static(path.join(__dirname, "../client/dist")));
+// Create a new message
+app.post("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const chatId = req.params.id;
+    const { text, role, images } = req.body;
 
-app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "../client/dist", "index.html"));
+    const chat = await Chat.findById(chatId);
+
+    if (!chat) {
+      return res.status(404).json({ error: "Chat not found" });
+    }
+
+    if (chat.userId !== userId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+
+    const newMessage = new Message({
+      chatId,
+      text,
+      role,
+      images,
+    });
+
+    await newMessage.save();
+
+    // Update chat title if it's the first user message
+    if (role === "user") {
+      const messagesCount = await Message.countDocuments({ chatId });
+      if (messagesCount <= 2) {
+        chat.title = text.substring(0, 30);
+        await chat.save();
+      }
+    }
+
+    res.status(201).json(newMessage);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to create message" });
+  }
 });
 
-app.listen(port, () => {
-  connect();
-  console.log("Server running on 3000");
+// HARVEST PLANNING ENDPOINTS
+
+// Get user's harvest data
+app.get("/api/harvest-data", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const harvestData = await HarvestData.find({ userId });
+    res.status(200).json(harvestData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch harvest data" });
+  }
+});
+
+// Add new harvest data
+app.post("/api/harvest-data", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { region, estateName, elevation, teaType, records } = req.body;
+    
+    // Check if user already has data for this estate
+    let harvestData = await HarvestData.findOne({ 
+      userId, 
+      estateName,
+      region 
+    });
+    
+    if (harvestData) {
+      // Add new records to existing data
+      harvestData.records.push(...records);
+      await harvestData.save();
+    } else {
+      // Create new harvest data entry
+      harvestData = new HarvestData({
+        userId,
+        region,
+        estateName,
+        elevation,
+        teaType,
+        records
+      });
+      await harvestData.save();
+    }
+    
+    res.status(201).json(harvestData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to save harvest data" });
+  }
+});
+
+// Get yield prediction
+app.get("/api/yield-prediction/:region/:month", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { region, month } = req.params;
+    
+    // Get user's historical data for this region
+    const harvestData = await HarvestData.find({ 
+      userId, 
+      region 
+    });
+    
+    if (!harvestData.length) {
+      return res.status(200).json({
+        prediction: {
+          current: "65%", // Default prediction
+          trend: "stable",
+          recommendation: "Insufficient historical data. Using regional averages."
+        }
+      });
+    }
+    
+    // Calculate prediction based on historical data
+    const prediction = calculateYieldPrediction(harvestData, parseInt(month));
+    
+    res.status(200).json({ prediction });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to generate yield prediction" });
+  }
+});
+
+// Helper function to calculate yield prediction
+function calculateYieldPrediction(harvestData, targetMonth) {
+  // Extract all records
+  const allRecords = harvestData.flatMap(data => data.records);
+  
+  // Filter records for the target month
+  const monthRecords = allRecords.filter(record => {
+    const recordDate = new Date(record.date);
+    return recordDate.getMonth() === targetMonth;
+  });
+  
+  if (monthRecords.length === 0) {
+    return {
+      current: "60%",
+      trend: "stable",
+      recommendation: "No historical data for this month. Using regional averages."
+    };
+  }
+  
+  // Calculate average yield for this month
+  const avgYield = monthRecords.reduce((sum, record) => sum + record.yield, 0) / monthRecords.length;
+  
+  // Get records from previous month to determine trend
+  const prevMonthRecords = allRecords.filter(record => {
+    const recordDate = new Date(record.date);
+    return recordDate.getMonth() === (targetMonth === 0 ? 11 : targetMonth - 1);
+  });
+  
+  let trend = "stable";
+  let percentage = "75%";
+  let recommendation = "Maintain regular harvesting schedule.";
+  
+  if (prevMonthRecords.length > 0) {
+    const prevAvgYield = prevMonthRecords.reduce((sum, record) => sum + record.yield, 0) / prevMonthRecords.length;
+    
+    if (avgYield > prevAvgYield * 1.1) {
+      trend = "increasing";
+      percentage = "85%";
+      recommendation = "Optimal harvesting time approaching. Schedule additional labor.";
+    } else if (avgYield < prevAvgYield * 0.9) {
+      trend = "decreasing";
+      percentage = "65%";
+      recommendation = "Yield may be lower than usual. Consider adjusting harvest schedule.";
+    }
+  }
+  
+  // Factor in weather conditions if available
+  const recentRecords = monthRecords.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 3);
+  const hasWeatherData = recentRecords.some(r => r.rainfall !== undefined || r.temperature !== undefined);
+  
+  if (hasWeatherData) {
+    const avgRainfall = recentRecords.filter(r => r.rainfall !== undefined)
+      .reduce((sum, r) => sum + r.rainfall, 0) / 
+      recentRecords.filter(r => r.rainfall !== undefined).length;
+    
+    const avgTemp = recentRecords.filter(r => r.temperature !== undefined)
+      .reduce((sum, r) => sum + r.temperature, 0) / 
+      recentRecords.filter(r => r.temperature !== undefined).length;
+    
+    // Adjust prediction based on weather
+    if (avgRainfall > 200) {
+      percentage = Math.max(parseInt(percentage) - 10, 50) + "%";
+      recommendation = "High rainfall may affect harvest quality. Consider adjusting schedule.";
+    } else if (avgTemp > 30) {
+      percentage = Math.max(parseInt(percentage) - 5, 50) + "%";
+      recommendation += " High temperatures may stress plants. Ensure adequate irrigation.";
+    }
+  }
+  
+  return {
+    current: percentage,
+    trend,
+    recommendation
+  };
+}
+
+// Start the server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
