@@ -6,6 +6,7 @@ import ImageKit from "imagekit";
 import mongoose from "mongoose";
 import Chat from "./models/chat.js";
 import UserChats from "./models/userChats.js";
+import Contact from "./models/contact.js";
 import { ClerkExpressRequireAuth } from "@clerk/clerk-sdk-node";
 
 const port = process.env.PORT || 3000;
@@ -41,6 +42,24 @@ const imagekit = new ImageKit({
 app.get("/api/upload", (req, res) => {
   const result = imagekit.getAuthenticationParameters();
   res.send(result);
+});
+
+app.post("/api/contact", async (req, res) => {
+  const { name, email, message } = req.body;
+
+  try {
+    const newContact = new Contact({
+      name,
+      email,
+      message,
+    });
+
+    await newContact.save();
+    res.status(201).send("Message sent successfully");
+  } catch (err) {
+    console.log(err);
+    res.status(500).send("Error saving contact message");
+  }
 });
 
 app.post("/api/chats", ClerkExpressRequireAuth(), async (req, res) => {
@@ -85,9 +104,9 @@ app.post("/api/chats", ClerkExpressRequireAuth(), async (req, res) => {
           },
         }
       );
-
-      res.status(201).send(newChat._id);
     }
+
+    res.status(201).send(savedChat._id);
   } catch (err) {
     console.log(err);
     res.status(500).send("Error creating chat!");
@@ -147,6 +166,28 @@ app.put("/api/chats/:id", ClerkExpressRequireAuth(), async (req, res) => {
   } catch (err) {
     console.log(err);
     res.status(500).send("Error adding conversation!");
+  }
+});
+
+// New delete endpoint for chat deletion
+app.delete("/api/chats/:id", ClerkExpressRequireAuth(), async (req, res) => {
+  const userId = req.auth.userId;
+  const chatId = req.params.id;
+
+  try {
+    // Delete the chat document
+    await Chat.findOneAndDelete({ _id: chatId, userId });
+
+    // Remove the chat reference from UserChats
+    await UserChats.updateOne(
+      { userId },
+      { $pull: { chats: { _id: chatId } } }
+    );
+
+    res.status(200).json({ message: "Chat deleted successfully" });
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Error deleting chat" });
   }
 });
 

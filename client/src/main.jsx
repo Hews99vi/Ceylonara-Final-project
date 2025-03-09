@@ -9,6 +9,10 @@ import RootLayout from "./layouts/rootLayout/RootLayout";
 import DashboardLayout from "./layouts/dashboardLayout/DashboardLayout";
 import SignInPage from "./routes/signInPage/signInPage";
 import SignUpPage from "./routes/signUpPage/signUpPage";
+import ContactPage from "./routes/contactpage/ContactPage";
+import ExplorePage from "./components/ExplorePage/ExplorePage";
+import ManageStatePage from "./components/ManageStatePage/ManageStatePage";
+import AnalyzeTeaPage from "./components/AnalyzeTeaPage/AnalyzeTeaPage";
 
 const router = createBrowserRouter([
   {
@@ -19,6 +23,10 @@ const router = createBrowserRouter([
         element: <Homepage />,
       },
       {
+        path: "/explore",
+        element: <ExplorePage />,
+      },
+      {
         path: "/sign-in/*",
         element: <SignInPage />,
       },
@@ -27,11 +35,23 @@ const router = createBrowserRouter([
         element: <SignUpPage />,
       },
       {
+        path: "/contact",
+        element: <ContactPage />,
+      },
+      {
         element: <DashboardLayout />,
         children: [
           {
             path: "/dashboard",
             element: <DashboardPage />,
+          },
+          {
+            path: "/dashboard/manage-state",
+            element: <ManageStatePage />,
+          },
+          {
+            path: "/dashboard/analyze-tea",
+            element: <AnalyzeTeaPage />,
           },
           {
             path: "/dashboard/chats/:id",
