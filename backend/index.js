@@ -85,6 +85,29 @@ app.get("/api/userchats", clerkMiddleware, async (req, res) => {
   }
 });
 
+// Add this new endpoint to get a single chat by ID
+app.get("/api/chats/:id", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const chatId = req.params.id;
+    
+    const chat = await Chat.findById(chatId);
+    
+    if (!chat) {
+      return res.status(404).json({ error: "Chat not found" });
+    }
+    
+    if (chat.userId !== userId) {
+      return res.status(403).json({ error: "Unauthorized" });
+    }
+    
+    res.status(200).json(chat);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Failed to fetch chat" });
+  }
+});
+
 
 // Also, we need to update the chat creation endpoint to add the chat to userChats
 // Modify your existing chat creation endpoint
