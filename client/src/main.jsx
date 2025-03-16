@@ -9,11 +9,14 @@ import RootLayout from "./layouts/rootLayout/RootLayout";
 import DashboardLayout from "./layouts/dashboardLayout/DashboardLayout";
 import SignInPage from "./routes/signInPage/signInPage";
 import SignUpPage from "./routes/signUpPage/signUpPage";
-import ContactPage from "./routes/contactpage/ContactPage";
 import ExplorePage from "./components/ExplorePage/ExplorePage";
-import ManageStatePage from "./components/ManageStatePage/ManageStatePage";
 import AnalyzeTeaPage from "./components/AnalyzeTeaPage/AnalyzeTeaPage";
+import ManageStatePage from "./components/ManageStatePage/ManageStatePage";
 import HarvestPlanPage from "./components/HarvestPlanPage/HarvestPlanPage";
+import ContactPage from "./routes/contactpage/ContactPage";
+
+// Import i18n configuration
+import './i18n/i18n';
 
 const router = createBrowserRouter([
   {

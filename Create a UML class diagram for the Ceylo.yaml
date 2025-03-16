@@ -1,0 +1,123 @@
+Create a UML class diagram for the Ceylonara Tea Analysis System with the following classes and specifications:
+
+Classes:
+1. User
+   - Attributes: 
+     * userId: String
+     * name: String
+     * email: String
+     * createdAt: Date
+     * updatedAt: Date
+   - Methods: 
+     * authenticate(): Boolean
+     * getProfile(): Object
+
+2. Chat
+   - Attributes: 
+     * _id: ObjectId
+     * userId: ObjectId
+     * title: String
+     * createdAt: Date
+     * updatedAt: Date
+   - Methods: 
+     * addMessage(): Boolean
+     * updateTitle(): Boolean
+     * getMessages(): Array
+
+3. Message
+   - Attributes: 
+     * _id: ObjectId
+     * chatId: ObjectId
+     * text: String
+     * role: String
+     * images: Array
+     * createdAt: Date
+   - Methods: 
+     * formatContent(): String
+     * attachImage(): Boolean
+
+4. UserChats
+   - Attributes: 
+     * _id: ObjectId
+     * userId: ObjectId
+     * chats: Array
+     * createdAt: Date
+     * updatedAt: Date
+   - Methods: 
+     * addChat(): Boolean
+     * removeChat(): Boolean
+     * getChatsList(): Array
+
+5. HarvestData
+   - Attributes: 
+     * _id: ObjectId
+     * userId: ObjectId
+     * region: String
+     * estateName: String
+     * elevation: Number
+     * teaType: String
+     * records: Array
+     * createdAt: Date
+     * updatedAt: Date
+   - Methods: 
+     * addRecord(): Boolean
+     * calculateAverageYield(): Number
+     * getPrediction(): Object
+
+6. HarvestRecord
+   - Attributes: 
+     * date: Date
+     * yield: Number
+     * rainfall: Number
+     * temperature: Number
+     * humidity: Number
+     * notes: String
+   - Methods: 
+     * calculateQuality(): Number
+
+7. ImageProcessor
+   - Attributes: 
+     * publicKey: String
+     * privateKey: String
+     * urlEndpoint: String
+   - Methods: 
+     * uploadImage(): String
+     * getAuthParameters(): Object
+     * processImage(): Object
+
+8. YieldPredictor
+   - Attributes: 
+     * harvestData: Object
+     * targetMonth: Date
+     * region: String
+   - Methods: 
+     * calculatePrediction(): Number
+     * analyzeTrend(): Object
+     * generateRecommendation(): String
+
+9. TeaAnalyzer
+   - Attributes: 
+     * imageData: Binary
+     * teaType: String
+     * region: String
+   - Methods: 
+     * analyzeQuality(): Number
+     * detectDisease(): Object
+     * gradeTeaLeaves(): String
+
+Relationships:
+- User has a one-to-many relationship with Chat (1 to *)
+- User has a one-to-one relationship with UserChats (1 to 1)
+- Chat has a one-to-many relationship with Message (1 to *)
+- User has a one-to-many relationship with HarvestData (1 to *)
+- HarvestData has a one-to-many relationship with HarvestRecord (1 to *)
+- YieldPredictor uses HarvestData (dependency relationship)
+- TeaAnalyzer uses ImageProcessor (dependency relationship)
+
+Use standard UML notation with:
+- Show proper attribute and method visibility (+ for public, - for private)
+- Include return types for all methods
+- Use solid lines for associations and dashed lines for dependencies
+- Show multiplicity on relationship lines (1, *)
+- Use green color theme to represent tea-related system
+- Include a legend explaining the UML notation used

@@ -1,0 +1,31 @@
+{
+  "app": {
+    "title": "සෙයිලොනාරා",
+    "subtitle": "තේ වගාවේ අනාගතය විවෘත කරන්න"
+  },
+  "nav": {
+    "dashboard": "උපකරණ පුවරුව",
+    "contact": "සම්බන්ධ වන්න",
+    "explore": "ගවේෂණය කරන්න"
+  },
+  "dashboard": {
+    "createChat": "නව කතාබහක් සාදන්න",
+    "explore": "සෙයිලොනාරා ගවේෂණය කරන්න",
+    "recentChats": "මෑත කතාබහ"
+  },
+  "harvestPlan": {
+    "title": "අස්වනු සැලසුම්",
+    "selectRegion": "ප්‍රදේශය තෝරන්න",
+    "selectMonth": "මාසය තෝරන්න",
+    "harvestStatus": "අස්වනු තත්ත්වය",
+    "in": "හි",
+    "weatherForecast": "දින 5 කාලගුණ අනාවැකිය",
+    "harvestConditions": "අස්වනු තත්ත්ව",
+    "noWeatherData": "කාලගුණ දත්ත නොමැත",
+    "loading": "කාලගුණ දත්ත පූරණය වෙමින්..."
+  },
+  "language": {
+    "english": "English",
+    "sinhala": "සිංහල"
+  }
+}

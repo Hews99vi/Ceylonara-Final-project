@@ -11,10 +11,33 @@ const ChatPage = () => {
 
   const { isPending, error, data } = useQuery({
     queryKey: ["chat", chatId],
-    queryFn: () =>
-      fetch(`${import.meta.env.VITE_API_URL}/api/chats/${chatId}`, {
-        credentials: "include",
-      }).then((res) => res.json()),
+    queryFn: async () => {
+      // Fetch both chat details and messages
+      const [chatResponse, messagesResponse] = await Promise.all([
+        fetch(`${import.meta.env.VITE_API_URL}/api/chats/${chatId}`, {
+          credentials: "include",
+        }),
+        fetch(`${import.meta.env.VITE_API_URL}/api/chats/${chatId}/messages`, {
+          credentials: "include",
+        })
+      ]);
+
+      const chatData = await chatResponse.json();
+      const messages = await messagesResponse.json();
+
+      // Combine chat data with messages history
+      return {
+        ...chatData,
+        history: messages.map(msg => ({
+          role: msg.role === 'assistant' ? 'model' : msg.role,
+          parts: [{ text: msg.text }],
+          img: msg.images?.[0]
+        }))
+      };
+    },
+    refetchOnWindowFocus: false,
+    staleTime: 0, // Ensure fresh data on mount
+    cacheTime: 0  // Don't cache the data
   });
 
   return (

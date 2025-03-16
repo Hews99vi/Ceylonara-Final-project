@@ -188,6 +188,8 @@ app.delete("/api/chats/:id", clerkMiddleware, async (req, res) => {
   }
 });
 
+
+
 // Get all messages for a chat
 app.get("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
   try {
@@ -205,14 +207,25 @@ app.get("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
     }
 
     const messages = await Message.find({ chatId }).sort({ createdAt: 1 });
-    res.status(200).json(messages);
+    
+    // Format messages with proper structure
+    const formattedMessages = messages.map(msg => ({
+      _id: msg._id,
+      chatId: msg.chatId,
+      text: msg.text,
+      role: msg.role,
+      images: msg.images || [],
+      createdAt: msg.createdAt
+    }));
+
+    res.status(200).json(formattedMessages);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Failed to fetch messages" });
   }
 });
 
-// Create a new message
+// Update message creation endpoint
 app.post("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
   try {
     const userId = req.auth.userId;
@@ -233,17 +246,24 @@ app.post("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
       chatId,
       text,
       role,
-      images,
+      images: images || [],
+      createdAt: new Date()
     });
 
     await newMessage.save();
 
-    // Update chat title if it's the first user message
+    // Update chat's last activity
+    chat.updatedAt = new Date();
+    await chat.save();
+
+    // Update userChats title if it's the first message
     if (role === "user") {
       const messagesCount = await Message.countDocuments({ chatId });
       if (messagesCount <= 2) {
-        chat.title = text.substring(0, 30);
-        await chat.save();
+        await UserChats.updateOne(
+          { userId, "chats._id": chatId },
+          { $set: { "chats.$.title": text.substring(0, 30) } }
+        );
       }
     }
 
@@ -253,6 +273,8 @@ app.post("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to create message" });
   }
 });
+
+// ... rest of the code ...
 
 // HARVEST PLANNING ENDPOINTS
 

@@ -7,8 +7,9 @@ import Markdown from "react-markdown";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 const NewPrompt = ({ data }) => {
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
+  const [messages, setMessages] = useState(data?.history || []);
+  const [currentQuestion, setCurrentQuestion] = useState("");
+  const [currentAnswer, setCurrentAnswer] = useState("");
   const [img, setImg] = useState({
     isLoading: false,
     error: "",
@@ -16,54 +17,70 @@ const NewPrompt = ({ data }) => {
     aiData: {},
   });
 
+  // Remove the useEffect that updates messages when data changes
+  // since we only want to initialize it once
+
   const chat = model.startChat({
-    history: data?.history?.map(({ role, parts }) => ({
-      role,
+    history: messages.map(({ role, parts }) => ({
+      role: role === 'assistant' ? 'model' : role,
       parts: [{ text: parts[0].text }],
-    })) || [],
-    generationConfig: {
-      // maxOutputTokens: 100,
-    },
+    })),
+    generationConfig: {},
   });
 
   const endRef = useRef(null);
   const formRef = useRef(null);
 
+  // Fix: Update dependency array to use currentQuestion and currentAnswer
   useEffect(() => {
     endRef.current.scrollIntoView({ behavior: "smooth" });
-  }, [data, question, answer, img.dbData]);
+  }, [data, currentQuestion, currentAnswer, img.dbData]);
 
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: () => {
-      return fetch(`${import.meta.env.VITE_API_URL}/api/chats/${data._id}`, {
-        method: "PUT",
+    mutationFn: async () => {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chats/${data._id}/messages`, {
+        method: "POST",
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          question: question.length ? question : undefined,
-          answer,
-          img: img.dbData?.filePath || undefined,
+          text: currentQuestion,
+          role: "user",
+          images: img.dbData?.filePath ? [img.dbData.filePath] : []
         }),
-      }).then((res) => res.json());
+      });
+
+      if (currentAnswer) {
+        await fetch(`${import.meta.env.VITE_API_URL}/api/chats/${data._id}/messages`, {
+          method: "POST",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: currentAnswer,
+            role: "model",
+            images: []
+          }),
+        });
+      }
+
+      return response.json();
     },
     onSuccess: () => {
-      queryClient
-        .invalidateQueries({ queryKey: ["chat", data._id] })
-        .then(() => {
-          formRef.current.reset();
-          setQuestion("");
-          setAnswer("");
-          setImg({
-            isLoading: false,
-            error: "",
-            dbData: {},
-            aiData: {},
-          });
-        });
+      queryClient.invalidateQueries({ queryKey: ["chat", data._id] });
+      formRef.current.reset();
+      setCurrentQuestion("");
+      setCurrentAnswer("");
+      setImg({
+        isLoading: false,
+        error: "",
+        dbData: {},
+        aiData: {},
+      });
     },
     onError: (err) => {
       console.log(err);
@@ -85,17 +102,26 @@ const NewPrompt = ({ data }) => {
   };
 
   const add = async (text, isInitial) => {
-    if (!isInitial) setQuestion(text);
+    if (!isInitial) {
+      setCurrentQuestion(text);
+      // Add user message to history
+      setMessages(prev => [...prev, {
+        role: 'user',
+        parts: [{ text }],
+        img: img.dbData?.filePath
+      }]);
+    }
 
     try {
-      // Check if the question is tea-related
       const isTeaRelated = checkIfTeaRelated(text);
       
       if (!isTeaRelated && !isInitial) {
-        // If not tea-related, provide a standard response
-        setAnswer("Ayubowan,🙏 I am Ceylonara, your gentle guide through the serene world of tea. With warmth and respect, I kindly remind you that my knowledge flows purely through the leaves of tea - its soothing culture, mindful preparation, diverse varieties, and rich history. Would you please share your tea-related curiosity with me? Let's explore this wonderful journey together! 🍵✨");
-        
-        // Still save the interaction to the database
+        const response = "Ayubowan,🙏 I am Ceylonara, your gentle guide through the serene world of tea...";
+        setCurrentAnswer(response);
+        setMessages(prev => [...prev, {
+          role: 'model', // Changed from 'assistant' to 'model'
+          parts: [{ text: response }]
+        }]);
         mutation.mutate();
         return;
       }
@@ -103,13 +129,19 @@ const NewPrompt = ({ data }) => {
       const result = await chat.sendMessageStream(
         Object.entries(img.aiData).length ? [img.aiData, text] : [text]
       );
+      
       let accumulatedText = "";
       for await (const chunk of result.stream) {
         const chunkText = chunk.text();
-        console.log(chunkText);
         accumulatedText += chunkText;
-        setAnswer(accumulatedText);
+        setCurrentAnswer(accumulatedText);
       }
+
+      // Add AI response to history
+      setMessages(prev => [...prev, {
+        role: 'model', // Changed from 'assistant' to 'model'
+        parts: [{ text: accumulatedText }]
+      }]);
 
       mutation.mutate();
     } catch (err) {
@@ -119,10 +151,12 @@ const NewPrompt = ({ data }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const text = e.target.text.value;
     if (!text) return;
-
+    
+    // Clear the input field immediately after getting its value
+    e.target.text.value = '';
+    
     add(text, false);
   };
 
@@ -140,30 +174,22 @@ const NewPrompt = ({ data }) => {
 
   return (
     <>
-      {/* ADD NEW CHAT */}
-      {img.isLoading && <div className="">Loading...</div>}
-      {img.dbData?.filePath && (
-        <IKImage
-          urlEndpoint={import.meta.env.VITE_IMAGE_KIT_ENDPOINT}
-          path={img.dbData?.filePath}
-          width="380"
-          transformation={[{ width: 380 }]}
-        />
+      {/* Only show current interaction that's not yet in messages */}
+      {currentQuestion && (
+        <div className="message user">{currentQuestion}</div>
       )}
-      {question && <div className="message user">{question}</div>}
-      {answer && (
+      {currentAnswer && (
         <div className="message">
-          <Markdown>{answer}</Markdown>
+          <Markdown>{currentAnswer}</Markdown>
         </div>
       )}
+      
       <div className="endChat" ref={endRef}></div>
       <form className="newForm" onSubmit={handleSubmit} ref={formRef}>
         <Upload setImg={setImg} />
         <input id="file" type="file" multiple={false} hidden />
         <input type="text" name="text" placeholder="Ask anything about tea..." />
-        <button>
-          <img src="/arrow.png" alt="" />
-        </button>
+        <button>Send</button>
       </form>
     </>
   );

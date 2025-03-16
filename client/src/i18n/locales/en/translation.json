@@ -1,0 +1,31 @@
+{
+  "app": {
+    "title": "Ceylonara",
+    "subtitle": "Unlock the Future of Tea Cultivation"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "contact": "Contact",
+    "explore": "Explore"
+  },
+  "dashboard": {
+    "createChat": "Create a new chat",
+    "explore": "Explore Ceylonara",
+    "recentChats": "Recent Chats"
+  },
+  "harvestPlan": {
+    "title": "Harvest Planning",
+    "selectRegion": "Select Region",
+    "selectMonth": "Select Month",
+    "harvestStatus": "Harvest Status for",
+    "in": "in",
+    "weatherForecast": "5-Day Weather Forecast",
+    "harvestConditions": "Harvest Conditions",
+    "noWeatherData": "No weather data available",
+    "loading": "Loading weather data..."
+  },
+  "language": {
+    "english": "English",
+    "sinhala": "සිංහල"
+  }
+}

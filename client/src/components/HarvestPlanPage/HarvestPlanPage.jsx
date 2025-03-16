@@ -1,9 +1,32 @@
 import "./harvestPlanPage.css";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useTranslation } from 'react-i18next';
+
+const teaRegions = [
+  "Uva",
+  "Dimbula",
+  "Nuwara Eliya",
+  "Kandy",
+  "Ruhuna",
+  "Uva Highlands",
+  "Central Highlands"
+];
+
+// Add coordinates for Sri Lankan tea regions
+const regionCoordinates = {
+  "Uva": { lat: 6.8841, lon: 81.2700 },
+  "Dimbula": { lat: 6.8964, lon: 80.6687 },
+  "Nuwara Eliya": { lat: 6.9697, lon: 80.7785 },
+  "Kandy": { lat: 7.2906, lon: 80.6337 },
+  "Ruhuna": { lat: 6.0535, lon: 80.2210 },
+  "Uva Highlands": { lat: 6.8750, lon: 81.0570 },
+  "Central Highlands": { lat: 7.0000, lon: 80.7500 }
+};
 
 const HarvestPlanPage = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [selectedRegion, setSelectedRegion] = useState("Nuwara Eliya");
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   // Add state for showing the data input form
@@ -19,6 +42,43 @@ const HarvestPlanPage = () => {
     humidity: "",
     notes: ""
   });
+  
+  // Add these state variables inside the component
+  const [weatherData, setWeatherData] = useState(null);
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Add useEffect for weather data fetching inside the component
+  useEffect(() => {
+    const fetchWeatherData = async () => {
+      try {
+        setLoading(true);
+        const coords = regionCoordinates[selectedRegion];
+        if (!coords) {
+          throw new Error('Region coordinates not found');
+        }
+  
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/forecast?lat=${coords.lat}&lon=${coords.lon}&units=metric&appid=${import.meta.env.VITE_OPENWEATHER_API_KEY}`
+        );
+  
+        if (!response.ok) {
+          throw new Error('Failed to fetch weather data');
+        }
+  
+        const data = await response.json();
+        setWeatherData(data.list);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching weather data:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchWeatherData();
+  }, [selectedRegion]);
   
   const regions = ["Nuwara Eliya", "Kandy", "Galle", "Ratnapura", "Matara"];
   const months = ["January", "February", "March", "April", "May", "June", 
@@ -163,231 +223,88 @@ const HarvestPlanPage = () => {
         <button className="closeButton" onClick={() => navigate("/dashboard")}>×</button>
         <div className="harvestPlanHeader">
           <img src="/logo.png" alt="Ceylonara Logo" />
-          <h1>Harvest Planning</h1>
+          <h1>{t('harvestPlan.title')}</h1>
         </div>
         
-        {showDataForm ? (
-          <div className="dataFormContainer">
-            <h2>Log Harvest Data</h2>
-            <p className="formDescription">
-              Enter your tea estate data to get personalized yield predictions.
-              The more data you provide, the more accurate your predictions will be.
-            </p>
-            
-            <form onSubmit={handleSubmitData} className="harvestDataForm">
-              <div className="formGroup">
-                <label htmlFor="estateName">Estate Name</label>
-                <input 
-                  type="text" 
-                  id="estateName" 
-                  name="estateName" 
-                  value={formData.estateName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="formRow">
-                <div className="formGroup">
-                  <label htmlFor="elevation">Elevation (meters)</label>
-                  <input 
-                    type="number" 
-                    id="elevation" 
-                    name="elevation" 
-                    value={formData.elevation}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                
-                <div className="formGroup">
-                  <label htmlFor="teaType">Tea Type</label>
-                  <select 
-                    id="teaType" 
-                    name="teaType" 
-                    value={formData.teaType}
-                    onChange={handleInputChange}
+        <div className="harvestPlanLayout">
+          <div className="controlPanel">
+            <div className="regionSelector">
+              <h3>{t('harvestPlan.selectRegion')}</h3>
+              <select 
+                value={selectedRegion} 
+                onChange={(e) => setSelectedRegion(e.target.value)}
+              >
+                {teaRegions.map((region) => (
+                  <option key={region} value={region}>
+                    {region}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="monthSelector">
+              <h3>{t('harvestPlan.selectMonth')}</h3>
+              <div className="monthGrid">
+                {months.map((month, index) => (
+                  <div
+                    key={month}
+                    className={selectedMonth === index ? "selected" : ""}
+                    onClick={() => setSelectedMonth(index)}
                   >
-                    <option value="Black">Black Tea</option>
-                    <option value="Green">Green Tea</option>
-                    <option value="White">White Tea</option>
-                    <option value="Oolong">Oolong Tea</option>
-                  </select>
-                </div>
-              </div>
-              
-              <div className="formGroup">
-                <label htmlFor="yield">Yield (kg per hectare)</label>
-                <input 
-                  type="number" 
-                  id="yield" 
-                  name="yield" 
-                  value={formData.yield}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="formRow">
-                <div className="formGroup">
-                  <label htmlFor="rainfall">Rainfall (mm)</label>
-                  <input 
-                    type="number" 
-                    id="rainfall" 
-                    name="rainfall" 
-                    value={formData.rainfall}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="formGroup">
-                  <label htmlFor="temperature">Temperature (°C)</label>
-                  <input 
-                    type="number" 
-                    id="temperature" 
-                    name="temperature" 
-                    value={formData.temperature}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                
-                <div className="formGroup">
-                  <label htmlFor="humidity">Humidity (%)</label>
-                  <input 
-                    type="number" 
-                    id="humidity" 
-                    name="humidity" 
-                    value={formData.humidity}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-              
-              <div className="formGroup">
-                <label htmlFor="notes">Notes</label>
-                <textarea 
-                  id="notes" 
-                  name="notes" 
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  placeholder="Add any additional observations..."
-                />
-              </div>
-              
-              <div className="formButtons">
-                <button type="button" className="cancelButton" onClick={() => setShowDataForm(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="submitButton">
-                  Submit Data
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
-          <div className="harvestPlanLayout">
-            <div className="controlPanel">
-              <div className="regionSelector">
-                <h3>Select Region</h3>
-                <select 
-                  value={selectedRegion} 
-                  onChange={(e) => setSelectedRegion(e.target.value)}
-                >
-                  {regions.map((region) => (
-                    <option key={region} value={region}>{region}</option>
-                  ))}
-                </select>
-              </div>
-              
-              <div className="monthSelector">
-                <h3>Select Month</h3>
-                <div className="monthGrid">
-                  {months.map((month, index) => (
-                    <div 
-                      key={month} 
-                      className={selectedMonth === index ? 'selected' : ''}
-                      onClick={() => setSelectedMonth(index)}
-                    >
-                      {month.substring(0, 3)}
-                    </div>
-                  ))}
-                </div>
+                    {month.slice(0, 3)}
+                  </div>
+                ))}
               </div>
             </div>
-            
-            <div className="contentSection">
-              <div className="harvestInfoCard">
-                <h2>Harvest Status for {months[selectedMonth]} in {selectedRegion}</h2>
-                
-                {currentMonthData && (
-                  <>
-                    <div className="statusIndicator">
-                      <div className={`statusDot ${currentMonthData.status}`}></div>
-                      <div className="statusText">
-                        {currentMonthData.status === "peak" && "Peak Harvest Season"}
-                        {currentMonthData.status === "good" && "Good Harvest Conditions"}
-                        {currentMonthData.status === "average" && "Average Harvest Conditions"}
-                        {currentMonthData.status === "low" && "Low Harvest Season"}
-                      </div>
-                    </div>
-                    
-                    <div className="harvestTip">
-                      <strong>Tip:</strong> {currentMonthData.tip}
-                    </div>
-                  </>
-                )}
-                
-                <div className="weatherForecast">
-                  <h3>7-Day Weather Forecast</h3>
-                  <div className="forecastGrid">
-                    {[...Array(7)].map((_, i) => {
-                      const date = new Date();
-                      date.setDate(date.getDate() + i);
-                      
-                      return (
-                        <div className="forecastDay" key={i}>
-                          <div className="date">{date.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })}</div>
-                          <div className="icon">{i % 2 === 0 ? '☀️' : '🌧️'}</div>
-                          <div className="temp">{Math.floor(20 + Math.random() * 10)}°C</div>
+          </div>
+
+          <div className="contentSection">
+            <div className="harvestInfoCard">
+              <h2>{t('harvestPlan.harvestStatus')} {months[selectedMonth]} {t('harvestPlan.in')} {selectedRegion}</h2>
+              <div className="statusIndicator">
+                <div className={`statusDot ${harvestData[selectedRegion]?.[selectedMonth]?.status || "average"}`}></div>
+                <span className="statusText">{harvestData[selectedRegion]?.[selectedMonth]?.status || "Average"} {t('harvestPlan.harvestConditions')}</span>
+              </div>
+              <div className="harvestTip">
+                <p>{harvestData[selectedRegion]?.[selectedMonth]?.tip || "Standard harvesting conditions. Follow regular protocols."}</p>
+              </div>
+            </div>
+
+            <div className="weatherForecast">
+              <h3>{t('harvestPlan.weatherForecast')}</h3>
+              <div className="forecastGrid">
+                {error ? (
+                  <div className="error-message">{t('harvestPlan.loading')}: {error}</div>
+                ) : loading ? (
+                  <div className="loading-message">{t('harvestPlan.loading')}</div>
+                ) : weatherData ? (
+                  weatherData
+                    .filter((item, index) => index % 8 === 0)
+                    .slice(0, 5)
+                    .map((forecast, index) => (
+                      <div className="forecastDay" key={index}>
+                        <div className="date">
+                          {new Date(forecast.dt * 1000).toLocaleDateString('en-US', { 
+                            weekday: 'short', 
+                            day: 'numeric' 
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                
-                <div className="yieldPrediction">
-                  <h3>Yield Prediction</h3>
-                  <div className="predictionDetails">
-                    <div className="predictionPercentage">{yieldPrediction.current}</div>
-                    <div className={`predictionTrend ${yieldPrediction.trend}`}>
-                      {yieldPrediction.trend === "increasing" && "Increasing"}
-                      {yieldPrediction.trend === "decreasing" && "Decreasing"}
-                      {yieldPrediction.trend === "stable" && "Stable"}
-                    </div>
-                  </div>
-                  <div className="predictionRecommendation">
-                    <strong>Recommendation:</strong> {yieldPrediction.recommendation}
-                  </div>
-                </div>
-                
-                <div className="actionButtons">
-                  <button className="actionButton">
-                    <span className="actionIcon">🔔</span>
-                    Set Reminders
-                  </button>
-                  <button className="actionButton">
-                    <span className="actionIcon">📊</span>
-                    View Detailed Report
-                  </button>
-                  <button className="actionButton" onClick={() => setShowDataForm(true)}>
-                    <span className="actionIcon">📝</span>
-                    Log Harvest Data
-                  </button>
-                </div>
+                        <div className="icon">
+                          <img 
+                            src={`https://openweathermap.org/img/wn/${forecast.weather[0].icon}@2x.png`}
+                            alt={forecast.weather[0].description}
+                          />
+                        </div>
+                        <div className="temp">{Math.round(forecast.main.temp)}°C</div>
+                      </div>
+                    ))
+                ) : (
+                  <div>{t('harvestPlan.noWeatherData')}</div>
+                )}
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
