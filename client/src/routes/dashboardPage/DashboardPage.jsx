@@ -1,10 +1,20 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import "./dashboardPage.css";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
+import { useEffect } from "react";
 
 const DashboardPage = () => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user?.publicMetadata?.role === 'factory') {
+      navigate('/dashboard/factory');
+      return;
+    }
+  }, [user, navigate]);
 
   const mutation = useMutation({
     mutationFn: (text) => {
@@ -30,19 +40,6 @@ const DashboardPage = () => {
     mutation.mutate(text);
   };
 
-  const handleAnalyze = () => {
-    navigate('/dashboard/analyze-tea');
-  };
-
-  const handleManageState = () => {
-    navigate('/dashboard/manage-state');
-  };
-
-  // Add handler for Harvest Planning
-  const handleHarvestPlan = () => {
-    navigate('/dashboard/harvest-plan');
-  };
-
   return (
     <div className="dashboardPage">
       <div className="texts">
@@ -50,28 +47,29 @@ const DashboardPage = () => {
           <img src="/logo.png" alt="" />
           <h1>Ceylonara</h1>
         </div>
-        <div className="options">
-          <div className="option" onClick={handleAnalyze}>
-            <img src="/image.png" alt="" />
-            <span>Analyze Images</span>
-          </div>
-          <div className="option" onClick={handleManageState}>
-            <img src="/code.png" alt="" />
-            <span>Manage My Tea State</span>
-          </div>
-          {/* Add Harvest Planning option */}
-          <div className="option" onClick={handleHarvestPlan}>
-            <img src="/calendar.png" alt="" />
-            <span>Harvest Planning</span>
-          </div>
-        </div>
-      </div>
-      <div className="formContainer">
-        <form onSubmit={handleSubmit}>
-          <input type="text" name="text" placeholder="Ask me about tea..." />
-          <button>
-            <img src="/arrow.png" alt="" />
+        <div className="features">
+          <button onClick={() => navigate('/dashboard/analyze-tea')} className="feature-button">
+            <img src="/analyze-icon.png" alt="Analyze" />
+            <h3>Analyze Tea Quality</h3>
+            <p>Upload tea leaf images for quality analysis</p>
           </button>
+          <button onClick={() => navigate('/dashboard/manage-estate')} className="feature-button">
+            <img src="/estate-icon.png" alt="Estate" />
+            <h3>Manage Estate</h3>
+            <p>Track and manage your tea estate details</p>
+          </button>
+          <button onClick={() => navigate('/dashboard/harvest-plan')} className="feature-button">
+            <img src="/harvest-icon.png" alt="Harvest" />
+            <h3>Harvest Planning</h3>
+            <p>Plan and optimize your tea harvesting schedule</p>
+          </button>
+        </div>
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            placeholder="Ask anything about tea cultivation..."
+            name="text"
+          />
         </form>
       </div>
     </div>

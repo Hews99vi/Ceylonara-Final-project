@@ -21,8 +21,8 @@
     h1 {
       font-size: 128px;
       background: linear-gradient(to right, #218608, #23ce7e);
-      background-clip: text;
       -webkit-background-clip: text;
+      background-clip: text;
       color: transparent;
 
       @media screen and (max-width: 1280px) {

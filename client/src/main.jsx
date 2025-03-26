@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./index.css";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom";
 import Homepage from "./routes/homepage/Homepage";
 import DashboardPage from "./routes/dashboardPage/DashboardPage";
 import ChatPage from "./routes/chatPage/ChatPage";
@@ -14,9 +14,9 @@ import AnalyzeTeaPage from "./components/AnalyzeTeaPage/AnalyzeTeaPage";
 import ManageStatePage from "./components/ManageStatePage/ManageStatePage";
 import HarvestPlanPage from "./components/HarvestPlanPage/HarvestPlanPage";
 import ContactPage from "./routes/contactpage/ContactPage";
-
-// Import i18n configuration
-import './i18n/i18n';
+import FactoryDashboard from "./components/FactoryDashboard/FactoryDashboard";
+import CollectionRequest from "./components/CollectionRequest/CollectionRequest";
+import RoleSelection from "./components/RoleSelection/RoleSelection";
 
 const router = createBrowserRouter([
   {
@@ -43,6 +43,10 @@ const router = createBrowserRouter([
         element: <ContactPage />,
       },
       {
+        path: "/select-role",
+        element: <RoleSelection />,
+      },
+      {
         element: <DashboardLayout />,
         children: [
           {
@@ -64,6 +68,14 @@ const router = createBrowserRouter([
           {
             path: "/dashboard/chats/:id",
             element: <ChatPage />,
+          },
+          {
+            path: "/dashboard/factory",
+            element: <FactoryDashboard />,
+          },
+          {
+            path: "/dashboard/request-collection",
+            element: <CollectionRequest />,
           },
         ],
       },

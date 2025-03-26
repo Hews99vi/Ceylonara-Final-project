@@ -19,11 +19,11 @@ const RootLayout = () => {
   return (
     <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
       <QueryClientProvider client={queryClient}>
-      <div className="rootLayout">
+        <div className="rootLayout">
           <header>
             <Link to="/" className="logo">
               <img src="/logo.png" alt="" />
-              <span>{t('app.title')}</span>
+              <span>Ceylonara</span>
             </Link>
             <div className="user">
               <LanguageSelector />

@@ -34,26 +34,33 @@ const imagekit = new ImageKit({
 });
 
 // Middleware
+// Update middleware configuration
 app.use(express.json());
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-    credentials: true,
-  })
-);
 
-// Clerk middleware
-const clerkMiddleware = ClerkExpressRequireAuth();
+// Configure CORS with specific options
+app.use(cors({
+  origin: process.env.CLIENT_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
+}));
 
-// Routes
-app.get("/", (req, res) => {
-  res.send("Hello World!");
+// Configure Clerk middleware with proper options
+const clerkMiddleware = ClerkExpressRequireAuth({
+  secretKey: process.env.CLERK_SECRET_KEY,
+  authorizedParties: [process.env.CLIENT_URL],
+  headerName: 'Authorization',
+  headerPrefix: 'Bearer',
 });
 
-// ImageKit authentication
-app.get("/api/upload", (req, res) => {
-  const authenticationParameters = imagekit.getAuthenticationParameters();
-  res.send(authenticationParameters);
+// Add error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // Get all chats for a user
@@ -274,9 +281,35 @@ app.post("/api/chats/:id/messages", clerkMiddleware, async (req, res) => {
   }
 });
 
-// ... rest of the code ...
+// Add this new endpoint after your other routes
+// Add this route if it doesn't exist
+app.post("/api/users/role", clerkMiddleware, async (req, res) => {
+  try {
+    const userId = req.auth.userId;
+    const { role } = req.body;
 
-// HARVEST PLANNING ENDPOINTS
+    if (!role || !['farmer', 'factory'].includes(role)) {
+      return res.status(400).json({ error: "Invalid role specified" });
+    }
+
+    // Update the user's metadata in Clerk
+    const updatedUser = await clerkClient.users.updateUser(userId, {
+      unsafeMetadata: {
+        role: role,
+        updatedAt: new Date().toISOString()
+      }
+    });
+
+    if (!updatedUser) {
+      throw new Error("Failed to update user metadata");
+    }
+
+    res.status(200).json({ message: "Role updated successfully" });
+  } catch (error) {
+    console.error("Error updating user role:", error);
+    res.status(500).json({ error: "Failed to update role" });
+  }
+});
 
 // Get user's harvest data
 app.get("/api/harvest-data", clerkMiddleware, async (req, res) => {
