@@ -121,30 +121,11 @@ const ChatList = () => {
         )}
       </div>
       <hr />
-      <div className="upgrade">
-        <img src="/logo.png" alt="" />
-        <div className="texts">
-          <span>Experience the Power of Tea AI</span>
-          <span>Analyze tea quality and detect diseases effortlessly with advanced image processing.</span>
-        </div>
+      <div style={{ flex: 1 }}></div> {/* This will push the AI experience to bottom */}
+      <div className="ai-experience">
+        <img src="/ai-icon.png" alt="AI" />
+        <span>Experience the Power of Tea AI</span>
       </div>
-
-      {showModal && (
-        <div className="modalOverlay">
-          <div className="deleteModal">
-            <h3>Delete Chat</h3>
-            <p>Are you sure you want to delete "{selectedChatTitle}"?</p>
-            <div className="modalButtons">
-              <button className="cancelBtn" onClick={() => setShowModal(false)}>
-                Cancel
-              </button>
-              <button className="confirmBtn" onClick={confirmDelete}>
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

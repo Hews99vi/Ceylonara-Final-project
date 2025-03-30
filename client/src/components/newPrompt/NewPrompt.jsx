@@ -189,7 +189,10 @@ const NewPrompt = ({ data }) => {
         <Upload setImg={setImg} />
         <input id="file" type="file" multiple={false} hidden />
         <input type="text" name="text" placeholder="Ask anything about tea..." />
-        <button>Send</button>
+        <button type="submit" className="send-button">
+          <img src="/send-icon.png" alt="Send" />
+          Send
+        </button>
       </form>
     </>
   );

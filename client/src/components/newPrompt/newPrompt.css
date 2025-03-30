@@ -37,4 +37,35 @@
         height: 16px;
       }
     }
-  }
+
+    .send-button {
+      background: #23ce7e;
+      border-radius: 8px;
+      padding: 8px 12px;  /* reduced horizontal padding */
+      display: flex;
+      align-items: center;
+      gap: 4px;          /* reduced gap */
+      color: white;
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      box-shadow: 0 2px 4px rgba(35, 206, 126, 0.15);
+      width: fit-content;  /* ensure button only takes needed width */
+      min-width: 60px;    /* set minimum width */
+    }
+
+    .send-button:hover {
+      background: #1fb76f;
+      transform: translateY(-1px);
+    }
+
+    .send-button:active {
+      transform: translateY(0);
+      background: #1aa062;
+    }
+
+    .send-button img {
+      width: 12px;
+      height: 12px;
+      filter: brightness(0) invert(1);
+    }  }

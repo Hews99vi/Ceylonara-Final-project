@@ -40,6 +40,7 @@ const DashboardLayout = () => {
     <div className="dashboardLayout">
       <div className="sidebar">
         <ChatList />
+        {/* Removed the duplicate ai-experience section */}
       </div>
       <div className="main-content">
         {!isSpecificPage && userRole === 'farmer' && (
